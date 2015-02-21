@@ -22,6 +22,7 @@ var gulp = require('gulp'),
 
 	config = (function () {
 		var basenames = {
+			fonts: 'fonts',
 			styles: 'styles',
 			scripts: 'scripts',
 			images: 'images'
@@ -139,6 +140,12 @@ gulp.task('images', function () {
 });
 
 
+gulp.task('bstp-fonts', function () {
+	return gulp.src('bower_components/bootstrap/fonts/**.*')
+		.pipe(gulp.dest(config.env.dev + '/' + config.basenames.fonts));
+});
+
+
 /**************************************************************/
 /*********************** HELPER TASKS *************************/
 /**************************************************************/
@@ -186,7 +193,8 @@ gulp.task('connect', function () {
 				connect().use(
 					'/bower_components',
 					connect.static('./bower_components')
-				)
+				),
+				connect.static('/bower_components/bootstrap/fonts')
 			]
 		}
 	});
@@ -237,7 +245,7 @@ gulp.task('usemin', function () {
  * Clean will be called before executing any task regarding assets
  */
 gulp.task('default', ['clean'], function () {
-	gulp.start('wiredep', 'styles', 'scripts', 'images', 'static');
+	gulp.start('wiredep', 'styles', 'bstp-fonts', 'scripts', 'images', 'static');
 });
 
 gulp.task('serve', ['default'], function () {
