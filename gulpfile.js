@@ -6,8 +6,10 @@ var gulp = require('gulp'),
 	uglify = require('gulp-uglify'),
 	imagemin = require('gulp-imagemin'),
 	connect = require('gulp-connect'),
+	usemin = require('gulp-usemin'),
 	rename = require('gulp-rename'),
 	open = require('gulp-open'),
+	eslint = require('gulp-eslint'),
 	concat = require('gulp-concat'),
 	notify = require('gulp-notify'),
 	cache = require('gulp-cache'),
@@ -16,6 +18,7 @@ var gulp = require('gulp'),
 	wiredep = require('wiredep').stream,
 	livereload = require('gulp-livereload'),
 	del = require('del'),
+
 
 	config = (function () {
 		var basenames = {
@@ -39,7 +42,7 @@ var gulp = require('gulp'),
 			html: env.dev + '/**/*.html',
 			host: '0.0.0.0',
 			port: {
-				app: 9000,
+				app: 9090,
 				lvd: 35729
 			}
 		}
@@ -61,11 +64,12 @@ gulp.task('styles', function () {
 	return gulp.src(config.styles)
 		.pipe(less())
 		.pipe(autoprefixer('last 2 version', 'safari 5', 'ie 8', 'ie 9', 'opera 12.1', 'ios 6', 'android 4'))
-		.pipe(gulp.dest(config.env.test + '/' + config.basenames.styles))
 		.pipe(rename({basename: config.basenames.styles}))
+		.pipe(gulp.dest(config.env.test + '/' + config.basenames.styles))
 		.pipe(minifycss())
 		.pipe(rev())
 		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.styles))
+		.pipe(livereload())
 		.pipe(notify({message: 'Styles task complete'}));
 });
 
@@ -77,23 +81,37 @@ gulp.task('styles', function () {
  * - Minify Javascript and rename as .min
  * - Append in the dist/ folder
  **/
+
 gulp.task('scripts', function () {
 	return gulp.src(config.scripts)
 		.pipe(jshint('.jshintrc'))
 		.pipe(jshint.reporter('default'))
+		.pipe(eslint())
+		.pipe(eslint.format())
 		.pipe(concat('app.js'))
-		.pipe(gulp.dest(config.env.test + '/' + config.basenames.scripts))
 		.pipe(rename({basename: config.basenames.scripts}))
+		.pipe(gulp.dest(config.env.test + '/' + config.basenames.scripts))
 		.pipe(uglify())
 		.pipe(rev())
 		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.scripts))
+		.pipe(livereload())
 		.pipe(notify({message: 'Scripts task complete'}));
+});
+
+
+gulp.task('gulpfile', function () {
+	return gulp.src('gulpfile.js')
+		.pipe(jshint('.jshintrc'))
+		.pipe(jshint.reporter('default'))
+		.pipe(livereload())
+		.pipe(notify({message: 'Gulpfile task complete'}));
 });
 
 
 gulp.task('html', function () {
 	return gulp.src(config.html)
 		.pipe(minifyHTML())
+		.pipe(livereload())
 		.pipe(gulp.dest(config.env.prod));
 });
 
@@ -116,6 +134,7 @@ gulp.task('images', function () {
 	return gulp.src(config.images)
 		.pipe(cache(imagemin({optimizationLevel: 3, progressive: true, interlaced: true})))
 		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.images))
+		.pipe(livereload())
 		.pipe(notify({message: 'Images task complete'}));
 });
 
@@ -126,6 +145,8 @@ gulp.task('images', function () {
 
 
 gulp.task('watch', function () {
+
+	livereload.listen();
 
 	// Watch .scss files
 	gulp.watch(config.styles, ['styles']);
@@ -138,9 +159,7 @@ gulp.task('watch', function () {
 	// Watch image files
 	gulp.watch(config.images, ['images']);
 
-	// Watch any files in dist/, reload on change
-	gulp.watch([config.env.prod + '/**']).on('change', livereload.changed);
-
+	gulp.watch('gulpfile.js', ['gulpfile']);
 });
 
 
@@ -149,7 +168,7 @@ gulp.task('watch', function () {
  * Will ensure that all assets will be cleaned before any task is called
  */
 gulp.task('clean', function (cb) {
-	del([config.env.prod + '/**/*'], cb);
+	del([config.env.prod + '/**/*.*'], cb);
 });
 
 
@@ -160,6 +179,15 @@ gulp.task('connect', function () {
 		port: config.port.app,
 		livereload: {
 			port: config.port.lvd
+		},
+		middleware: function(connect) {
+			return [
+				connect.static('.tmp'),
+				connect().use(
+					'/bower_components',
+					connect.static('./bower_components')
+				)
+			]
 		}
 	});
 });
@@ -168,7 +196,10 @@ gulp.task('connect', function () {
 gulp.task('wiredep', function () {
 	gulp.src(config.env.dev + '/index.html')
 		.pipe(wiredep({
-			exclude: [/jquery/]
+			ignorePath: /\.\.\//,
+			exclude: [
+				/jquery/,
+				'bower_components/bootstrap/dist/js/bootstrap.js']
 		}))
 		.pipe(gulp.dest(config.env.dev));
 });
@@ -185,6 +216,17 @@ gulp.task('open', function () {
 });
 
 
+gulp.task('usemin', function () {
+	return gulp.src(config.env.dev + '/index.html')
+		.pipe(usemin({
+				css: [minifyCss(), 'concat'],
+				html: [minifyHtml({empty: true})],
+				js: [uglify(), rev()]
+			}))
+		.pipe(gulp.dest(config.env.prod));
+});
+
+
 /**************************************************************/
 /*********************** RUNNER TASKS *************************/
 /**************************************************************/
@@ -198,4 +240,6 @@ gulp.task('default', ['clean'], function () {
 	gulp.start('wiredep', 'styles', 'scripts', 'images', 'static');
 });
 
-gulp.task('serve', ['connect', 'open', 'watch']);
+gulp.task('serve', ['default'], function () {
+	gulp.start('connect', 'open', 'watch');
+});
