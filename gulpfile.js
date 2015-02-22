@@ -19,13 +19,13 @@ var gulp = require('gulp'),
 	livereload = require('gulp-livereload'),
 	del = require('del'),
 
-
-	config = (function () {
+	// Config object gathering generic values needed across the gulp file.
+ 	config = (function () {
 		var basenames = {
 			fonts: 'fonts',
 			styles: 'styles',
 			scripts: 'scripts',
-			images: 'images',
+			images: 'images'
 		};
 
 		var env = {
@@ -56,11 +56,11 @@ var gulp = require('gulp'),
 
 
 /**
- * Style related Tasks
- * - Compile LESS files
- * - Autoprefix CSS
- * - Minify CSS and rename as .min
- * - Append in the dist/ folder
+ * dev-styles: stylesheet related task for dev
+ * compile LESS files across the app/ folder.
+ * then rename the main file according to config name
+ * then move file to .tmp folder
+ * to finally livereload
  **/
 gulp.task('dev-styles', function () {
 	return gulp.src(config.env.dev + '/app.less')
@@ -74,13 +74,11 @@ gulp.task('dev-styles', function () {
 
 
 /**
- * Script related Tasks
- * - Concatenate Javascript
- * - Uglify Javascript
- * - Minify Javascript and rename as .min
- * - Append in the dist/ folder
+ * dev-scripts: scripts related task for dev
+ * make sure scripts are jshint compliant across app/ folder
+ * make sure they are also eslint compliant
+ * to finally livereload
  **/
-
 gulp.task('dev-scripts', function () {
 	return gulp.src(config.scripts)
 		.pipe(jshint('.jshintrc'))
@@ -92,23 +90,28 @@ gulp.task('dev-scripts', function () {
 });
 
 
+/**
+ * dev-gulpfile: gulfile related task for dev
+ * livereload the app
+ **/
 gulp.task('dev-gulpfile', function () {
 	return gulp.src('gulpfile.js')
 		.pipe(livereload())
 		.pipe(notify({message: 'Gulpfile task complete'}));
 });
 
+/**
+ * dev-html: html related task for dev
+ * livereload the app
+ **/
 gulp.task('dev-html', function () {
 	return gulp.src(config.env.dev + '/index.html')
 		.pipe(livereload())
 });
 
 /**
- * Image related Tasks
- * - Concatenate Javascript
- * - Uglify Javascript
- * - Minify Javascript and rename as .min
- * - Append in the dist/ folder
+ * dev-images: image related task for dev
+ * livereload the app
  **/
 gulp.task('dev-images', function () {
 	return gulp.src(config.images)
@@ -117,11 +120,20 @@ gulp.task('dev-images', function () {
 });
 
 
+/**
+ * dev-btstp-fonts: bootstrap fonts related tasks
+ * will copy fonts beeded by bootstrap to the app/ folder
+ **/
 gulp.task('dev-bstp-fonts', function () {
 	return gulp.src('bower_components/bootstrap/fonts/**.*')
 		.pipe(gulp.dest(config.env.dev + '/' + config.basenames.fonts));
 });
 
+
+/**
+ * watch: looks up for file changes when on dev mode
+ * starts up livereload, will look for below files and kick off a task accordingly
+ **/
 gulp.task('watch', function () {
 
 	livereload.listen();
@@ -132,17 +144,26 @@ gulp.task('watch', function () {
 	// Watch .js files
 	gulp.watch(config.scripts, ['dev-scripts']);
 
+	// Watch .html files
 	gulp.watch(config.html, ['dev-html']);
 
 	// Watch image files
 	gulp.watch(config.images, ['dev-images']);
 
+	// Watch gulp file
 	gulp.watch('gulpfile.js', ['dev-gulpfile']);
 });
 
+
+/**
+ * connect: kicks off a Node JS server to serve the application in dev mode
+ * @root: app folder by default
+ * also connect to .tmp folder to look for generated files
+ * as well as the bower_components folder for all vendor resources
+ **/
 gulp.task('connect', function () {
 	connect.server({
-		root: 'app',
+		root: config.env.dev,
 		host: config.host,
 		port: config.port.app,
 		livereload: {
@@ -161,6 +182,11 @@ gulp.task('connect', function () {
 	});
 });
 
+
+/**
+ * open: opens the browser to the given URL
+ * pointing by default to index.html in app/
+ */
 gulp.task('open', function () {
 	var options = {
 		url: 'http://' + config.host + ':' + config.port.app,
