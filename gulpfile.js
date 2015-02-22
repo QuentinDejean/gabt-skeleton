@@ -62,7 +62,7 @@ var gulp = require('gulp'),
  * - Append in the dist/ folder
  **/
 gulp.task('styles', function () {
-	return gulp.src(config.styles)
+	return gulp.src(config.env.dev + '/app.less')
 		.pipe(less())
 		.pipe(autoprefixer('last 2 version', 'safari 5', 'ie 8', 'ie 9', 'opera 12.1', 'ios 6', 'android 4'))
 		.pipe(rename({basename: config.basenames.styles}))
@@ -175,7 +175,10 @@ gulp.task('watch', function () {
  * Will ensure that all assets will be cleaned before any task is called
  */
 gulp.task('clean', function (cb) {
-	del([config.env.prod + '/**/*.*'], cb);
+	del([
+		config.env.prod,
+		config.env.test
+	], cb);
 });
 
 
