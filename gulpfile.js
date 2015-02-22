@@ -25,7 +25,8 @@ var gulp = require('gulp'),
 			fonts: 'fonts',
 			styles: 'styles',
 			scripts: 'scripts',
-			images: 'images'
+			images: 'images',
+			fonts: 'fonts'
 		};
 
 		var env = {
@@ -39,6 +40,7 @@ var gulp = require('gulp'),
 			basenames: basenames,
 			scripts: env.dev + '/**/*.js',
 			styles: env.dev + '/**/*.less',
+			fonts: env.dev + '/fonts/**/*',
 			images: env.dev + '/images/**/*',
 			html: env.dev + '/**/*.html',
 			host: '0.0.0.0',
@@ -67,9 +69,6 @@ gulp.task('styles', function () {
 		.pipe(autoprefixer('last 2 version', 'safari 5', 'ie 8', 'ie 9', 'opera 12.1', 'ios 6', 'android 4'))
 		.pipe(rename({basename: config.basenames.styles}))
 		.pipe(gulp.dest(config.env.test + '/' + config.basenames.styles))
-		.pipe(minifycss())
-		.pipe(rev())
-		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.styles))
 		.pipe(livereload())
 		.pipe(notify({message: 'Styles task complete'}));
 });
@@ -89,12 +88,6 @@ gulp.task('scripts', function () {
 		.pipe(jshint.reporter('default'))
 		.pipe(eslint())
 		.pipe(eslint.format())
-		.pipe(concat('app.js'))
-		.pipe(rename({basename: config.basenames.scripts}))
-		.pipe(gulp.dest(config.env.test + '/' + config.basenames.scripts))
-		.pipe(uglify())
-		.pipe(rev())
-		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.scripts))
 		.pipe(livereload())
 		.pipe(notify({message: 'Scripts task complete'}));
 });
@@ -109,19 +102,18 @@ gulp.task('gulpfile', function () {
 });
 
 
-gulp.task('html', function () {
+gulp.task('build-html', function () {
 	return gulp.src(config.html)
 		.pipe(minifyHTML())
-		.pipe(livereload())
 		.pipe(gulp.dest(config.env.prod));
 });
 
-gulp.task('static', function () {
+gulp.task('build-static', function () {
 	return gulp.src([
 		config.env.dev + '/*.{ico,txt}',
-		config.env.dev + '/.htaccess'
-	])
-		.pipe(gulp.dest(config.env.prod));
+		config.env.dev + '/.htaccess',
+		config.env.dev + '/404.html'
+	]).pipe(gulp.dest(config.env.prod));
 });
 
 /**
@@ -133,10 +125,19 @@ gulp.task('static', function () {
  **/
 gulp.task('images', function () {
 	return gulp.src(config.images)
-		.pipe(cache(imagemin({optimizationLevel: 3, progressive: true, interlaced: true})))
-		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.images))
 		.pipe(livereload())
 		.pipe(notify({message: 'Images task complete'}));
+});
+
+gulp.task('build-images', function () {
+	return gulp.src(config.images)
+		.pipe(cache(imagemin({optimizationLevel: 3, progressive: true, interlaced: true})))
+		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.images));
+});
+
+gulp.task('build-fonts', function () {
+	return gulp.src(config.fonts)
+		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.fonts));
 });
 
 
@@ -161,7 +162,7 @@ gulp.task('watch', function () {
 	// Watch .js files
 	gulp.watch(config.scripts, ['scripts']);
 
-	gulp.watch(config.html, ['html']);
+	gulp.watch(config.html, [livereload()]);
 
 	// Watch image files
 	gulp.watch(config.images, ['images']);
@@ -210,7 +211,9 @@ gulp.task('wiredep', function () {
 			ignorePath: /\.\.\//,
 			exclude: [
 				/jquery/,
-				'bower_components/bootstrap/dist/js/bootstrap.js']
+				'bower_components/bootstrap/dist/js/bootstrap.js',
+				'bower_components/bootstrap/dist/css/bootstrap.css'
+			]
 		}))
 		.pipe(gulp.dest(config.env.dev));
 });
@@ -230,11 +233,13 @@ gulp.task('open', function () {
 gulp.task('usemin', function () {
 	return gulp.src(config.env.dev + '/index.html')
 		.pipe(usemin({
-				css: [minifyCss(), 'concat'],
-				html: [minifyHtml({empty: true})],
-				js: [uglify(), rev()]
+				html: [minifyHTML()],
+				js: [uglify(), rev()],
+				vendorjs: [uglify(), rev()],
+				css: [minifycss(), rev()]
 			}))
-		.pipe(gulp.dest(config.env.prod));
+		.pipe(gulp.dest(config.env.prod))
+		.pipe(notify({message: 'Build Task Successful'}));
 });
 
 
@@ -248,9 +253,20 @@ gulp.task('usemin', function () {
  * Clean will be called before executing any task regarding assets
  */
 gulp.task('default', ['clean'], function () {
-	gulp.start('wiredep', 'styles', 'bstp-fonts', 'scripts', 'images', 'static');
+	gulp.start('wiredep', 'styles', 'bstp-fonts', 'scripts', 'images');
 });
 
 gulp.task('serve', ['default'], function () {
 	gulp.start('connect', 'open', 'watch');
 });
+
+gulp.task('build', ['clean', 'styles', 'bstp-fonts'], function () {
+	gulp.start(
+		'build-html',
+		'wiredep',
+		'build-images',
+		'build-fonts',
+		'build-static',
+		'usemin');
+});
+
