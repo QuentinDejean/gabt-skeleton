@@ -85,7 +85,7 @@ gulp.task('dev-scripts', function () {
 	return gulp.src(config.scripts)
 		.pipe(jshint('.jshintrc'))
 		.pipe(jshint.reporter('default'))
-		.pipe(eslint())
+		.pipe(eslint('.eslintrc'))
 		.pipe(eslint.format())
 		.pipe(livereload())
 		.pipe(notify({message: 'Scripts task complete'}));
@@ -94,8 +94,6 @@ gulp.task('dev-scripts', function () {
 
 gulp.task('dev-gulpfile', function () {
 	return gulp.src('gulpfile.js')
-		.pipe(jshint('.jshintrc'))
-		.pipe(jshint.reporter('default'))
 		.pipe(livereload())
 		.pipe(notify({message: 'Gulpfile task complete'}));
 });
