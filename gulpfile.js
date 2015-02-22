@@ -26,7 +26,6 @@ var gulp = require('gulp'),
 			styles: 'styles',
 			scripts: 'scripts',
 			images: 'images',
-			fonts: 'fonts'
 		};
 
 		var env = {
@@ -52,7 +51,7 @@ var gulp = require('gulp'),
 	})();
 
 /**************************************************************/
-/******************** ASSETS RELATED TASKS ********************/
+/*********************** DEV RELATED TASKS ********************/
 /**************************************************************/
 
 
@@ -63,7 +62,7 @@ var gulp = require('gulp'),
  * - Minify CSS and rename as .min
  * - Append in the dist/ folder
  **/
-gulp.task('styles', function () {
+gulp.task('dev-styles', function () {
 	return gulp.src(config.env.dev + '/app.less')
 		.pipe(less())
 		.pipe(autoprefixer('last 2 version', 'safari 5', 'ie 8', 'ie 9', 'opera 12.1', 'ios 6', 'android 4'))
@@ -82,7 +81,7 @@ gulp.task('styles', function () {
  * - Append in the dist/ folder
  **/
 
-gulp.task('scripts', function () {
+gulp.task('dev-scripts', function () {
 	return gulp.src(config.scripts)
 		.pipe(jshint('.jshintrc'))
 		.pipe(jshint.reporter('default'))
@@ -93,7 +92,7 @@ gulp.task('scripts', function () {
 });
 
 
-gulp.task('gulpfile', function () {
+gulp.task('dev-gulpfile', function () {
 	return gulp.src('gulpfile.js')
 		.pipe(jshint('.jshintrc'))
 		.pipe(jshint.reporter('default'))
@@ -101,19 +100,9 @@ gulp.task('gulpfile', function () {
 		.pipe(notify({message: 'Gulpfile task complete'}));
 });
 
-
-gulp.task('build-html', function () {
-	return gulp.src(config.html)
-		.pipe(minifyHTML())
-		.pipe(gulp.dest(config.env.prod));
-});
-
-gulp.task('build-static', function () {
-	return gulp.src([
-		config.env.dev + '/*.{ico,txt}',
-		config.env.dev + '/.htaccess',
-		config.env.dev + '/404.html'
-	]).pipe(gulp.dest(config.env.prod));
+gulp.task('dev-html', function () {
+	return gulp.src(config.env.dev + '/index.html')
+		.pipe(livereload())
 });
 
 /**
@@ -123,65 +112,35 @@ gulp.task('build-static', function () {
  * - Minify Javascript and rename as .min
  * - Append in the dist/ folder
  **/
-gulp.task('images', function () {
+gulp.task('dev-images', function () {
 	return gulp.src(config.images)
 		.pipe(livereload())
 		.pipe(notify({message: 'Images task complete'}));
 });
 
-gulp.task('build-images', function () {
-	return gulp.src(config.images)
-		.pipe(cache(imagemin({optimizationLevel: 3, progressive: true, interlaced: true})))
-		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.images));
-});
 
-gulp.task('build-fonts', function () {
-	return gulp.src(config.fonts)
-		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.fonts));
-});
-
-
-gulp.task('bstp-fonts', function () {
+gulp.task('dev-bstp-fonts', function () {
 	return gulp.src('bower_components/bootstrap/fonts/**.*')
 		.pipe(gulp.dest(config.env.dev + '/' + config.basenames.fonts));
 });
-
-
-/**************************************************************/
-/*********************** HELPER TASKS *************************/
-/**************************************************************/
-
 
 gulp.task('watch', function () {
 
 	livereload.listen();
 
 	// Watch .scss files
-	gulp.watch(config.styles, ['styles']);
+	gulp.watch(config.styles, ['dev-styles']);
 
 	// Watch .js files
-	gulp.watch(config.scripts, ['scripts']);
+	gulp.watch(config.scripts, ['dev-scripts']);
 
-	gulp.watch(config.html, [livereload()]);
+	gulp.watch(config.html, ['dev-html']);
 
 	// Watch image files
-	gulp.watch(config.images, ['images']);
+	gulp.watch(config.images, ['dev-images']);
 
-	gulp.watch('gulpfile.js', ['gulpfile']);
+	gulp.watch('gulpfile.js', ['dev-gulpfile']);
 });
-
-
-/**
- * Application Clean
- * Will ensure that all assets will be cleaned before any task is called
- */
-gulp.task('clean', function (cb) {
-	del([
-		config.env.prod,
-		config.env.test
-	], cb);
-});
-
 
 gulp.task('connect', function () {
 	connect.server({
@@ -204,6 +163,80 @@ gulp.task('connect', function () {
 	});
 });
 
+gulp.task('open', function () {
+	var options = {
+		url: 'http://' + config.host + ':' + config.port.app,
+		app: 'google chrome'
+	};
+
+	gulp.src(config.env.dev + '/index.html')
+		.pipe(open('', options));
+});
+
+
+/****************************************************************/
+/*********************** BUILD RELATED TASKS ********************/
+/****************************************************************/
+
+gulp.task('build-images', function () {
+	return gulp.src(config.images)
+		.pipe(cache(imagemin({optimizationLevel: 3, progressive: true, interlaced: true})))
+		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.images));
+});
+
+gulp.task('build-fonts', function () {
+	return gulp.src(config.fonts)
+		.pipe(gulp.dest(config.env.prod + '/' + config.basenames.fonts));
+});
+
+gulp.task('build-html', function () {
+	return gulp.src(config.html)
+		.pipe(minifyHTML())
+		.pipe(gulp.dest(config.env.prod));
+});
+
+gulp.task('build-static', function () {
+	return gulp.src([
+		config.env.dev + '/*.{ico,txt}',
+		config.env.dev + '/.htaccess',
+		config.env.dev + '/404.html'
+	]).pipe(gulp.dest(config.env.prod));
+});
+
+gulp.task('connect-dist', function () {
+	connect.server({
+		root: 'dist',
+		host: config.host,
+		port: config.port.app
+	});
+});
+
+gulp.task('open-dist', function () {
+	var options = {
+		url: 'http://' + config.host + ':' + config.port.app,
+		app: 'google chrome'
+	};
+
+	gulp.src(config.env.prod + '/index.html')
+		.pipe(open('', options));
+});
+
+gulp.task('usemin', function () {
+	return gulp.src(config.env.dev + '/index.html')
+		.pipe(usemin({
+			html: [minifyHTML()],
+			js: [uglify(), rev()],
+			vendorjs: [uglify(), rev()],
+			css: [minifycss(), rev()]
+		}))
+		.pipe(gulp.dest(config.env.prod))
+		.pipe(notify({message: 'Build Task Successful'}));
+});
+
+
+/**************************************************************/
+/*********************** HELPER TASKS *************************/
+/**************************************************************/
 
 gulp.task('wiredep', function () {
 	gulp.src(config.env.dev + '/index.html')
@@ -218,29 +251,17 @@ gulp.task('wiredep', function () {
 		.pipe(gulp.dest(config.env.dev));
 });
 
-
-gulp.task('open', function () {
-	var options = {
-		url: 'http://' + config.host + ':' + config.port.app,
-		app: 'google chrome'
-	};
-
-	gulp.src(config.env.dev + '/index.html')
-		.pipe(open('', options));
+/**
+ * Application Clean
+ * Will ensure that all assets will be cleaned before any task is called
+ */
+gulp.task('clean', function (cb) {
+	del([
+		config.env.prod,
+		config.env.test
+	], cb);
 });
 
-
-gulp.task('usemin', function () {
-	return gulp.src(config.env.dev + '/index.html')
-		.pipe(usemin({
-				html: [minifyHTML()],
-				js: [uglify(), rev()],
-				vendorjs: [uglify(), rev()],
-				css: [minifycss(), rev()]
-			}))
-		.pipe(gulp.dest(config.env.prod))
-		.pipe(notify({message: 'Build Task Successful'}));
-});
 
 
 /**************************************************************/
@@ -253,14 +274,14 @@ gulp.task('usemin', function () {
  * Clean will be called before executing any task regarding assets
  */
 gulp.task('default', ['clean'], function () {
-	gulp.start('wiredep', 'styles', 'bstp-fonts', 'scripts', 'images');
+	gulp.start('wiredep', 'dev-styles', 'dev-bstp-fonts', 'dev-scripts', 'dev-images');
 });
 
 gulp.task('serve', ['default'], function () {
 	gulp.start('connect', 'open', 'watch');
 });
 
-gulp.task('build', ['clean', 'styles', 'bstp-fonts'], function () {
+gulp.task('build', ['clean', 'dev-styles', 'dev-bstp-fonts'], function () {
 	gulp.start(
 		'build-html',
 		'wiredep',
@@ -268,5 +289,9 @@ gulp.task('build', ['clean', 'styles', 'bstp-fonts'], function () {
 		'build-fonts',
 		'build-static',
 		'usemin');
+});
+
+gulp.task('serve-dist', ['build'], function () {
+	gulp.start('connect-dist', 'open-dist');
 });
 
